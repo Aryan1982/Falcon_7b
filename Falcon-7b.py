@@ -1,6 +1,11 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import transformers
 import torch
+from flask import Flask
+
+
+app = Flask(__name__)
+
 
 model = "tiiuae/falcon-7b"
 
@@ -13,13 +18,28 @@ pipeline = transformers.pipeline(
     trust_remote_code=True,
     device_map="auto",
 )
-sequences = pipeline(
-   "Girafatron is obsessed with giraffes, the most glorious animal on the face of this Earth. Giraftron believes all other animals are irrelevant when compared to the glorious majesty of the giraffe.\nDaniel: Hello, Girafatron!\nGirafatron:",
-    max_length=200,
-    do_sample=True,
-    top_k=10,
-    num_return_sequences=1,
-    eos_token_id=tokenizer.eos_token_id,
-)
-for seq in sequences:
-    print(f"Result: {seq['generated_text']}")
+
+@app.route('/generate_text', methods=['POST'])
+def generate_text():
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+        
+
+        sequences = pipeline(
+            user_message,
+            max_length=200,
+            do_sample=True,
+            top_k=10,
+            num_return_sequences=1,
+            eos_token_id=tokenizer.eos_token_id,
+        )
+
+        generated_text = sequences[0]['generated_text']
+        return jsonify({'result': generated_text})
+
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+if __name__ == '__main__':
+    app.run(debug=True)
